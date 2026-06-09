@@ -23,6 +23,29 @@ export async function POST(request: Request) {
     }
 
     let orderId = null
+    const orderData = {
+      fullName: formData.fullName,
+      userName: formData.fullName,
+      email: formData.email,
+      userEmail: formData.email,
+      whatsapp: formData.whatsapp,
+      userWhatsapp: formData.whatsapp,
+      serviceType: formData.serviceType,
+      projectDescription: formData.projectDescription,
+      description: formData.projectDescription,
+      deadline: formData.deadline || null,
+      rawFileLink: formData.rawFileLink || null,
+      budget: formData.budget || "Not specified",
+      price: formData.budget || "Not specified",
+      status: "pending",
+      createdAtIso: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAtIso: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      hasFiles: false,
+      unreadMessages: 0,
+    }
+
     try {
       if (adminDb) {
         // Prevent rapid duplicate submissions: check most recent order from this email
@@ -64,24 +87,12 @@ export async function POST(request: Request) {
           console.warn("Duplicate detection error:", queryErr)
         }
 
-        const orderData = {
-          fullName: formData.fullName,
-          email: formData.email,
-          whatsapp: formData.whatsapp,
-          serviceType: formData.serviceType,
-          projectDescription: formData.projectDescription,
-          deadline: formData.deadline || null,
-          rawFileLink: formData.rawFileLink || null,
-          budget: formData.budget || "Not specified",
-          status: "pending",
-          createdAtIso: new Date().toISOString(),
-          updatedAtIso: new Date().toISOString(),
-          hasFiles: false,
-          unreadMessages: 0,
-        }
-
         const docRef = await adminDb.collection("orders").add(orderData)
         orderId = docRef.id
+      } else {
+        console.warn("[v0] Firestore Admin SDK not initialized. Mocking database save locally.")
+        console.info("[v0] Mocked Order Data:", orderData)
+        orderId = "mock-order-" + Math.random().toString(36).substring(2, 9)
       }
     } catch (firebaseError) {
       // Continue with Discord/Sheets even if Firebase fails

@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
 
     // Send email using Discord webhook as notification (since you have this set up)
     // In production, you'd use a proper email service like Resend
-    const webhookUrl = process.env.DISCORD_WEBHOOK_URL
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL || process.env.DISCORD_ORDER_WEBHOOK_URL || process.env.DISCORD_APPLICATION_WEBHOOK_URL
 
     if (webhookUrl) {
       await fetch(webhookUrl, {

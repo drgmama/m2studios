@@ -18,7 +18,18 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [logoutSuccess, setLogoutSuccess] = useState(false)
-  const [googleAvailable] = useState(() => isGoogleProviderAvailable())
+  const [googleAvailable, setGoogleAvailable] = useState(false)
+
+  useEffect(() => {
+    setGoogleAvailable(isGoogleProviderAvailable())
+    const interval = setInterval(() => {
+      if (isGoogleProviderAvailable()) {
+        setGoogleAvailable(true)
+        clearInterval(interval)
+      }
+    }, 300)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     if (!isConfigValid) {
@@ -418,12 +429,12 @@ export default function AuthPage() {
           </div>
 
           {/* Overlay Panel - Desktop */}
-          <div className="overlay-container absolute top-0 left-1/2 w-1/2 h-full overflow-hidden transition-transform duration-700 z-[100]">
+          <div className={`overlay-container absolute top-0 left-1/2 w-1/2 h-full overflow-hidden transition-transform duration-700 z-[100] ${isSignUp ? "translate-x-[-100%]" : "translate-x-0"}`}>
             <div
-              className="overlay absolute left-[-100%] h-full w-[200%] transition-transform duration-700"
+              className={`overlay absolute left-[-100%] h-full w-[200%] transition-transform duration-700 ${isSignUp ? "translate-x-[50%]" : "translate-x-0"}`}
               style={{ backgroundColor: "#FACC15" }}
             >
-              <div className="overlay-panel overlay-left absolute flex items-center justify-center flex-col px-10 text-center top-0 h-full w-1/2 transition-transform duration-700 translate-x-[-20%]">
+              <div className={`overlay-panel overlay-left absolute flex items-center justify-center flex-col px-10 text-center top-0 h-full w-1/2 transition-transform duration-700 ${isSignUp ? "translate-x-0" : "translate-x-[-20%]"}`}>
                 <h1 className="text-4xl font-bold mb-3 text-black">Welcome Back!</h1>
                 <p className="text-sm text-black/80 mb-8 leading-relaxed max-w-[280px]">
                   Keep connected with us please login with your personal info
@@ -436,7 +447,7 @@ export default function AuthPage() {
                 </button>
               </div>
 
-              <div className="overlay-panel overlay-right absolute right-0 flex items-center justify-center flex-col px-10 text-center top-0 h-full w-1/2 transition-transform duration-700">
+              <div className={`overlay-panel overlay-right absolute right-0 flex items-center justify-center flex-col px-10 text-center top-0 h-full w-1/2 transition-transform duration-700 ${isSignUp ? "translate-x-[20%]" : "translate-x-0"}`}>
                 <h1 className="text-4xl font-bold mb-3 text-black">Hello, Friend!</h1>
                 <p className="text-sm text-black/80 mb-8 leading-relaxed max-w-[280px]">
                   Enter your personal details and start journey with us
@@ -777,21 +788,6 @@ export default function AuthPage() {
           }
         }
 
-        .auth-container.right-panel-active .overlay-container {
-          transform: translateX(-100%);
-        }
-
-        .auth-container.right-panel-active .overlay {
-          transform: translateX(50%);
-        }
-
-        .auth-container.right-panel-active .overlay-left {
-          transform: translateX(0);
-        }
-
-        .auth-container.right-panel-active .overlay-right {
-          transform: translateX(20%);
-        }
       `}</style>
     </div>
   )

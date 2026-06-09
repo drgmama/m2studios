@@ -1,12 +1,9 @@
-import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { FileText } from "lucide-react"
 
 export default function TermsPage() {
   return (
     <>
-      <Navigation />
-
       <main className="min-h-screen bg-background pt-24 pb-16">
         {/* Background Effects */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">

@@ -10,6 +10,7 @@ import { OrderTimeline } from "@/components/order-timeline"
 import { ReviewModal } from "@/components/review-modal"
 import { useState, useEffect } from "react"
 import { ArrowLeft, MessageSquare, Download, Loader2, Star } from "lucide-react"
+import { OrderCountdown } from "@/components/order-countdown"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { db, getFirestoreClient } from "@/lib/firebase"
@@ -123,15 +124,20 @@ export default function OrderDetailPage() {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
                     <p className="text-sm text-[#9CA3AF] mb-1">Deadline</p>
-                    <p className="font-medium text-[#FFFFFF]">{new Date(order.deadline).toLocaleDateString()}</p>
+                    <p className="font-medium text-[#FFFFFF] flex flex-col sm:flex-row sm:items-center gap-2">
+                      {order.deadline ? new Date(order.deadline).toLocaleDateString() : "Not specified"}
+                      {order.status === "working" && order.deadline && (
+                        <OrderCountdown deadline={order.deadline} />
+                      )}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-[#9CA3AF] mb-1">Budget</p>
-                    <p className="font-semibold text-[#FACC15] text-lg">{order.price || order.budget}</p>
+                    <p className="font-semibold text-[#FACC15] text-lg">{order.price || order.budget || "Not specified"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-[#9CA3AF] mb-1">Order Date</p>
-                    <p className="font-medium text-[#FFFFFF]">{new Date(order.createdAt).toLocaleDateString()}</p>
+                    <p className="font-medium text-[#FFFFFF]">{ (order.createdAt || order.createdAtIso) ? new Date(order.createdAt || order.createdAtIso).toLocaleDateString() : "Not specified" }</p>
                   </div>
                   {order.deliveredAt && (
                     <div>
@@ -143,7 +149,7 @@ export default function OrderDetailPage() {
 
                 <div>
                   <p className="text-sm text-[#9CA3AF] mb-2">Project Description</p>
-                  <p className="text-[#FFFFFF] leading-relaxed">{order.description}</p>
+                  <p className="text-[#FFFFFF] leading-relaxed">{order.projectDescription || order.description || "No description provided."}</p>
                 </div>
               </Card>
 

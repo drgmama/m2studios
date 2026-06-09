@@ -126,7 +126,7 @@ export default function ThankYouPage() {
             <Link href="/portfolio">
               <Button
                 variant="outline"
-                className="border-border hover:bg-white/5 px-8 py-6 text-lg font-semibold rounded-xl bg-transparent"
+                className="border-white hover:border-[#FACC15] hover:text-[#FACC15] px-8 py-6 text-lg font-semibold rounded-xl bg-transparent"
               >
                 View Our Work
                 <ArrowRight className="w-5 h-5 ml-2" />

@@ -32,9 +32,30 @@ export default function ChatPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [order, setOrder] = useState<any>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const dbInstance = db || (await getFirestoreClient())
+        if (!dbInstance) return
+        const firestore = await import("firebase/firestore")
+        const { doc, getDoc } = firestore
+        const orderDoc = await getDoc(doc(dbInstance, "orders", orderId))
+        if (orderDoc.exists()) {
+          setOrder({ id: orderDoc.id, ...orderDoc.data() })
+        }
+      } catch (e) {
+        console.error("Error fetching order in chat:", e)
+      }
+    }
+    if (orderId) {
+      fetchOrder()
+    }
+  }, [orderId])
 
   const fetchMessages = async () => {
     if (!orderId) {
@@ -47,16 +68,28 @@ export default function ChatPage() {
       if (!dbInstance) throw new Error("Firestore is not initialized")
 
       const firestore = await import("firebase/firestore")
-      const { collection, query, where, orderBy, getDocs } = firestore
+      const { collection, query, where, getDocs } = firestore
 
       const messagesRef = collection(dbInstance, "messages")
-      const q = query(messagesRef, where("orderId", "==", orderId), orderBy("createdAt", "asc"))
+      const q = query(messagesRef, where("orderId", "==", orderId))
 
       const snapshot = await getDocs(q)
       const messagesData: Message[] = []
       snapshot.forEach((doc) => {
         messagesData.push({ id: doc.id, ...doc.data() } as Message)
       })
+
+      // Sort in-memory to avoid requiring composite Firestore indexes
+      messagesData.sort((a, b) => {
+        const getMs = (val: any) => {
+          if (!val) return 0
+          if (val.toMillis) return val.toMillis()
+          if (val.seconds) return val.seconds * 1000 + (val.nanoseconds || 0) / 1000000
+          return new Date(val).getTime()
+        }
+        return getMs(a.createdAt) - getMs(b.createdAt)
+      })
+
       setMessages(messagesData)
       setError(null)
       setTimeout(() => scrollToBottom(), 100)
@@ -85,17 +118,18 @@ export default function ChatPage() {
   const handleSend = async () => {
     if (!newMessage.trim() || !user) return
 
+    const notifMsg = newMessage.trim()
     setSending(true)
     try {
       const firestore = await import("firebase/firestore")
-      const { Timestamp, addDoc, collection } = firestore
+      const { Timestamp, addDoc, collection, query, where, getDocs } = firestore
 
       const messageData: Omit<MessageDocument, "createdAt"> & { createdAt: typeof Timestamp } = {
         orderId,
         senderId: user.uid,
         senderName: user.displayName || "You",
-        senderRole: "client",
-        message: newMessage.trim(),
+        senderRole: user.role || "client",
+        message: notifMsg,
         read: false,
         createdAt: Timestamp.now(),
       }
@@ -103,6 +137,46 @@ export default function ChatPage() {
       if (!dbInstance) throw new Error("Firestore is not initialized")
       await addDoc(collection(dbInstance, "messages"), messageData)
       setNewMessage("")
+
+      // Send notification to the other party
+      try {
+        if (user.role === "admin") {
+          // Notify client
+          const clientEmail = order?.email || order?.userEmail
+          if (clientEmail) {
+            const usersQuery = query(collection(dbInstance, "users"), where("email", "==", clientEmail))
+            const usersSnapshot = await getDocs(usersQuery)
+            if (!usersSnapshot.empty) {
+              const clientUid = usersSnapshot.docs[0].id
+              await addDoc(collection(dbInstance, "notifications"), {
+                userId: clientUid,
+                orderId,
+                title: "New Message from Editor",
+                message: notifMsg.substring(0, 100) + (notifMsg.length > 100 ? "..." : ""),
+                read: false,
+                createdAt: new Date().toISOString()
+              })
+            }
+          }
+        } else {
+          // Notify admin
+          const adminsQuery = query(collection(dbInstance, "users"), where("role", "==", "admin"))
+          const adminsSnapshot = await getDocs(adminsQuery)
+          adminsSnapshot.forEach(async (adminDoc) => {
+            await addDoc(collection(dbInstance, "notifications"), {
+              userId: adminDoc.id,
+              orderId,
+              title: "New Client Message",
+              message: `${user.displayName || "Client"} sent a message: ${notifMsg.substring(0, 100) + (notifMsg.length > 100 ? "..." : "")}`,
+              read: false,
+              createdAt: new Date().toISOString()
+            })
+          })
+        }
+      } catch (notifErr) {
+        console.error("Failed to create message notification:", notifErr)
+      }
+
       await fetchMessages()
     } catch (error) {
       console.error("[v0] Error sending message:", error)
@@ -141,13 +215,13 @@ export default function ChatPage() {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref)
 
           const firestore = await import("firebase/firestore")
-          const { Timestamp, addDoc, collection } = firestore
+          const { Timestamp, addDoc, collection, query, where, getDocs } = firestore
 
           const messageData: Omit<MessageDocument, "createdAt"> & { createdAt: typeof Timestamp } = {
             orderId,
             senderId: user.uid,
             senderName: user.displayName || "You",
-            senderRole: "client",
+            senderRole: user.role || "client",
             message: `Uploaded file: ${file.name}`,
             fileUrl: downloadURL,
             fileName: file.name,
@@ -157,6 +231,44 @@ export default function ChatPage() {
           const dbInstance = db || (await getFirestoreClient())
           if (!dbInstance) throw new Error("Firestore is not initialized")
           await addDoc(collection(dbInstance, "messages"), messageData)
+
+          // Send notification for file upload
+          try {
+            if (user.role === "admin") {
+              const clientEmail = order?.email || order?.userEmail
+              if (clientEmail) {
+                const usersQuery = query(collection(dbInstance, "users"), where("email", "==", clientEmail))
+                const usersSnapshot = await getDocs(usersQuery)
+                if (!usersSnapshot.empty) {
+                  const clientUid = usersSnapshot.docs[0].id
+                  await addDoc(collection(dbInstance, "notifications"), {
+                    userId: clientUid,
+                    orderId,
+                    title: "File Uploaded by Editor",
+                    message: `Uploaded file: ${file.name}`,
+                    read: false,
+                    createdAt: new Date().toISOString()
+                  })
+                }
+              }
+            } else {
+              const adminsQuery = query(collection(dbInstance, "users"), where("role", "==", "admin"))
+              const adminsSnapshot = await getDocs(adminsQuery)
+              adminsSnapshot.forEach(async (adminDoc) => {
+                await addDoc(collection(dbInstance, "notifications"), {
+                  userId: adminDoc.id,
+                  orderId,
+                  title: "File Uploaded by Client",
+                  message: `${user.displayName || "Client"} uploaded file: ${file.name}`,
+                  read: false,
+                  createdAt: new Date().toISOString()
+                })
+              })
+            }
+          } catch (notifErr) {
+            console.error("Failed to create file upload notification:", notifErr)
+          }
+
           setUploading(false)
           setUploadProgress(0)
           await fetchMessages()
@@ -169,19 +281,27 @@ export default function ChatPage() {
     }
   }
 
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp)
+  const formatTime = (timestamp: any) => {
+    if (!timestamp) return ""
+    let date: Date
+    if (timestamp.toDate) {
+      date = timestamp.toDate()
+    } else if (timestamp.seconds) {
+      date = new Date(timestamp.seconds * 1000)
+    } else {
+      date = new Date(timestamp)
+    }
     return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
   }
 
   return (
     <ProtectedRoute>
       <AnimatedBackground />
-      <DashboardNav userRole="client" />
+      <DashboardNav userRole={user?.role || "client"} />
 
       <main className="min-h-screen pt-24 pb-20 px-4">
         <div className="container mx-auto max-w-4xl">
-          <Link href="/dashboard" className="inline-flex items-center text-[#9CA3AF] hover:text-[#FFFFFF] mb-6">
+          <Link href={user?.role === "admin" ? "/admin" : "/dashboard"} className="inline-flex items-center text-[#9CA3AF] hover:text-[#FFFFFF] mb-6">
             <ArrowLeft size={18} className="mr-2" />
             Back to Dashboard
           </Link>
@@ -229,14 +349,16 @@ export default function ChatPage() {
                   No messages yet. Start the conversation!
                 </div>
               ) : (
-                messages.map((message) => (
+              messages.map((message) => {
+                const isCurrentUser = message.senderId === user?.uid
+                return (
                   <div
                     key={message.id}
-                    className={`flex ${message.senderRole === "client" ? "justify-end" : "justify-start"}`}
+                    className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
                   >
                     <div
                       className={`max-w-[70%] ${
-                        message.senderRole === "client" ? "bg-[#FACC15] text-[#050505]" : "bg-[#1a1a1a] text-[#FFFFFF]"
+                        isCurrentUser ? "bg-[#FACC15] text-[#050505]" : "bg-[#1a1a1a] text-[#FFFFFF]"
                       } rounded-lg p-4`}
                     >
                       <p className="text-xs font-semibold mb-1 opacity-80">{message.senderName}</p>
@@ -254,7 +376,8 @@ export default function ChatPage() {
                       <p className="text-xs opacity-70 mt-2">{formatTime(message.createdAt)}</p>
                     </div>
                   </div>
-                ))
+                )
+              })
               )}
               <div ref={messagesEndRef} />
             </div>

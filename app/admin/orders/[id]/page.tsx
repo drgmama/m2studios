@@ -112,13 +112,35 @@ export default function AdminOrderDetailPage() {
       const dbInstance = db || (await getFirestoreClient())
       if (!dbInstance) throw new Error("Firestore is not initialized")
       const firestore = await import("firebase/firestore")
-      const { doc, updateDoc, arrayUnion } = firestore
+      const { doc, updateDoc, arrayUnion, collection, query, where, getDocs, addDoc } = firestore
 
       const orderRef = doc(dbInstance, "orders", orderId)
       await updateDoc(orderRef, {
         downloadUrls: [...(order.downloadUrls || []), ...uploadedUrls],
         updatedAt: new Date().toISOString(),
       })
+
+      // Create notification for the client
+      try {
+        const clientEmail = order?.email || order?.userEmail
+        if (clientEmail) {
+          const usersQuery = query(collection(dbInstance, "users"), where("email", "==", clientEmail))
+          const usersSnapshot = await getDocs(usersQuery)
+          if (!usersSnapshot.empty) {
+            const clientUid = usersSnapshot.docs[0].id
+            await addDoc(collection(dbInstance, "notifications"), {
+              userId: clientUid,
+              orderId,
+              title: "New Delivery Available",
+              message: "Your editor has uploaded new completed files to your order.",
+              read: false,
+              createdAt: new Date().toISOString()
+            })
+          }
+        }
+      } catch (notifErr) {
+        console.error("Failed to create file delivery notification:", notifErr)
+      }
 
       setIsUploading(false)
       setUploadSuccess(true)
@@ -139,7 +161,7 @@ export default function AdminOrderDetailPage() {
       const dbInstance = db || (await getFirestoreClient())
       if (!dbInstance) throw new Error("Firestore is not initialized")
       const firestore = await import("firebase/firestore")
-      const { doc, updateDoc, arrayUnion } = firestore
+      const { doc, updateDoc, arrayUnion, collection, query, where, getDocs, addDoc } = firestore
 
       const orderRef = doc(dbInstance, "orders", orderId)
 
@@ -162,6 +184,28 @@ export default function AdminOrderDetailPage() {
 
       await updateDoc(orderRef, updateData)
 
+      // Create notification for the client
+      try {
+        const clientEmail = order?.email || order?.userEmail
+        if (clientEmail) {
+          const usersQuery = query(collection(dbInstance, "users"), where("email", "==", clientEmail))
+          const usersSnapshot = await getDocs(usersQuery)
+          if (!usersSnapshot.empty) {
+            const clientUid = usersSnapshot.docs[0].id
+            await addDoc(collection(dbInstance, "notifications"), {
+              userId: clientUid,
+              orderId,
+              title: "Order Status Update",
+              message: `Your order status has been updated to ${orderStatus}.`,
+              read: false,
+              createdAt: new Date().toISOString()
+            })
+          }
+        }
+      } catch (notifErr) {
+        console.error("Failed to create status update notification:", notifErr)
+      }
+
       if (order) {
         setOrder({
           ...order,
@@ -175,7 +219,7 @@ export default function AdminOrderDetailPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            to: order.userEmail,
+            to: order.email || order.userEmail,
             subject: `Order Status Update - ${orderStatus.toUpperCase()}`,
             type: orderStatus === "delivered" ? "delivery" : "status-update",
             data: {
@@ -303,33 +347,33 @@ export default function AdminOrderDetailPage() {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
                     <p className="text-sm text-[#9CA3AF] mb-1">Client Name</p>
-                    <p className="font-medium text-[#FFFFFF]">{order.userName}</p>
+                    <p className="font-medium text-[#FFFFFF]">{order.fullName || order.userName || "Guest"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-[#9CA3AF] mb-1">Email</p>
-                    <p className="font-medium text-[#FFFFFF]">{order.userEmail}</p>
+                    <p className="font-medium text-[#FFFFFF]">{order.email || order.userEmail || "No Email"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-[#9CA3AF] mb-1">WhatsApp</p>
-                    <p className="font-medium text-[#FFFFFF]">{order.userWhatsapp}</p>
+                    <p className="font-medium text-[#FFFFFF]">{order.whatsapp || order.userWhatsapp || "No WhatsApp"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-[#9CA3AF] mb-1">Deadline</p>
-                    <p className="font-medium text-[#FFFFFF]">{new Date(order.deadline).toLocaleDateString()}</p>
+                    <p className="font-medium text-[#FFFFFF]">{order.deadline ? new Date(order.deadline).toLocaleDateString() : "Not specified"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-[#9CA3AF] mb-1">Budget</p>
-                    <p className="font-semibold text-[#FACC15] text-lg">{order.price || order.budget}</p>
+                    <p className="font-semibold text-[#FACC15] text-lg">{order.price || order.budget || "Not specified"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-[#9CA3AF] mb-1">Created</p>
-                    <p className="font-medium text-[#FFFFFF]">{new Date(order.createdAt).toLocaleDateString()}</p>
+                    <p className="font-medium text-[#FFFFFF]">{ (order.createdAt || order.createdAtIso) ? new Date(order.createdAt || order.createdAtIso).toLocaleDateString() : "Not specified" }</p>
                   </div>
                 </div>
 
                 <div>
                   <p className="text-sm text-[#9CA3AF] mb-2">Project Description</p>
-                  <p className="text-[#FFFFFF] leading-relaxed">{order.description}</p>
+                  <p className="text-[#FFFFFF] leading-relaxed">{order.projectDescription || order.description || "No description provided."}</p>
                 </div>
               </Card>
 
@@ -488,7 +532,7 @@ export default function AdminOrderDetailPage() {
                 <h2 className="text-xl font-bold text-[#FFFFFF] mb-4">Quick Actions</h2>
 
                 <div className="space-y-2">
-                  <Link href={`/admin/orders/${orderId}/chat`} className="block">
+                  <Link href={`/dashboard/orders/${orderId}/chat`} className="block">
                     <Button
                       variant="outline"
                       className="w-full border-[#1a1a1a] hover:border-[#FACC15] justify-start bg-transparent text-[#FFFFFF]"

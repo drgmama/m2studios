@@ -316,10 +316,9 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="group bg-transparent btn-lift-outline"
-                  style={{ borderColor: "#FACC15", color: "#FACC15", background: "transparent" }}
+                  className="group btn-lift-outline border-[#FACC15] text-[#FACC15] bg-transparent hover:bg-[#FACC15] hover:text-[#000000] transition-all duration-300"
                 >
-                  <PlayCircle className="mr-2" size={20} />
+                  <PlayCircle className="mr-2 group-hover:text-[#000000] transition-colors" size={20} />
                   View Portfolio
                 </Button>
               </Link>

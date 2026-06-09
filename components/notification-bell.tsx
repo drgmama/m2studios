@@ -28,13 +28,11 @@ export function NotificationBell() {
       if (!dbInstance) return
 
       const firestore = await import("firebase/firestore")
-      const { collection, query, where, onSnapshot, orderBy, limit } = firestore
+      const { collection, query, where, onSnapshot } = firestore
 
       const q = query(
         collection(dbInstance, "notifications"),
-        where("userId", "==", user.uid),
-        orderBy("createdAt", "desc"),
-        limit(10),
+        where("userId", "==", user.uid)
       )
 
       unsubscribe = onSnapshot(q, (snapshot: any) => {
@@ -42,7 +40,11 @@ export function NotificationBell() {
         snapshot.forEach((doc: any) => {
           notifs.push({ id: doc.id, ...doc.data() } as Notification)
         })
-        setNotifications(notifs)
+        // Sort in-memory by date descending
+        notifs.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        // Limit to 10 in-memory
+        const limitedNotifs = notifs.slice(0, 10)
+        setNotifications(limitedNotifs)
         setUnreadCount(notifs.filter((n) => !n.read).length)
       })
     }

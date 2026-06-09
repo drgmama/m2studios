@@ -71,18 +71,26 @@ export function Navigation() {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-6 xl:space-x-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={handleNavClick}
-                className={`nav-link text-sm xl:text-base font-medium transition-all duration-300 ${
-                  pathname === link.href ? "text-[#FACC15]" : "text-white hover:text-[#FACC15]"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={handleNavClick}
+                  className={`relative py-1 text-sm xl:text-base font-medium transition-all duration-300 ${
+                    isActive ? "text-[#FACC15]" : "text-white hover:text-[#FACC15]"
+                  } group`}
+                >
+                  {link.label}
+                  <span
+                    className={`absolute bottom-0 left-0 w-full h-[2px] bg-[#FACC15] transition-transform duration-300 origin-left ${
+                      isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                    }`}
+                  />
+                </Link>
+              )
+            })}
             {!loading &&
               (user ? (
                 <Link href="/dashboard">

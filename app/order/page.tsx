@@ -84,6 +84,7 @@ export default function OrderPage() {
     deadline: "",
     rawFileLink: "",
   })
+  const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
@@ -97,6 +98,17 @@ export default function OrderPage() {
     }
   }, [preSelectedService])
 
+  // Pre-populate name and email if the user is authenticated
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        fullName: prev.fullName || user.displayName || "",
+        email: prev.email || user.email || "",
+      }))
+    }
+  }, [user])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
@@ -109,12 +121,56 @@ export default function OrderPage() {
     }
   }
 
+  const validateStep1 = () => {
+    if (!formData.fullName.trim()) return "Full Name is required."
+    if (!formData.email.trim()) return "Email is required."
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) return "Please enter a valid email address."
+    if (!formData.whatsapp.trim()) return "WhatsApp Number is required."
+    return null
+  }
+
+  const validateStep2 = () => {
+    if (!formData.serviceType) return "Please select a service type."
+    if (!formData.projectDescription.trim()) return "Project Description is required."
+    return null
+  }
+
+  const handleNextStep = () => {
+    setErrorMessage("")
+    setSubmitStatus("idle")
+    if (currentStep === 1) {
+      const err = validateStep1()
+      if (err) {
+        setErrorMessage(err)
+        setSubmitStatus("error")
+        return
+      }
+      setCurrentStep(2)
+    } else if (currentStep === 2) {
+      const err = validateStep2()
+      if (err) {
+        setErrorMessage(err)
+        setSubmitStatus("error")
+        return
+      }
+      setCurrentStep(3)
+    }
+  }
+
+  const handlePrevStep = () => {
+    setErrorMessage("")
+    setSubmitStatus("idle")
+    setCurrentStep((prev) => Math.max(prev - 1, 1))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setSubmitStatus("idle")
     setErrorMessage("")
 
+    // Final check on all required fields
     if (
       !formData.fullName ||
       !formData.email ||
@@ -151,6 +207,7 @@ export default function OrderPage() {
           rawFileLink: "",
         })
         setSelectedDate(undefined)
+        setCurrentStep(1)
         router.push("/thank-you")
       } else {
         setErrorMessage(result.error || "Failed to submit order. Please try again.")
@@ -223,175 +280,237 @@ export default function OrderPage() {
               </div>
             )}
 
+            {/* Step Indicator Stepper */}
+            <div className="flex items-center justify-between max-w-xs mx-auto mb-8 relative">
+              <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-800 -translate-y-1/2 z-0" />
+              <div
+                className="absolute top-1/2 left-0 h-0.5 bg-[#FACC15] -translate-y-1/2 z-0 transition-all duration-300"
+                style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+              />
+              {[1, 2, 3].map((stepNum) => {
+                const isActive = stepNum === currentStep
+                const isCompleted = stepNum < currentStep
+                return (
+                  <div
+                    key={stepNum}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm z-10 transition-all duration-300 border ${
+                      isCompleted
+                        ? "bg-[#FACC15] border-[#FACC15] text-[#000000]"
+                        : isActive
+                          ? "bg-[#050505] border-[#FACC15] text-[#FACC15] shadow-[0_0_10px_rgba(250,204,21,0.5)]"
+                          : "bg-gray-900 border-gray-700 text-gray-500"
+                    }`}
+                  >
+                    {stepNum}
+                  </div>
+                )
+              })}
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="block text-sm font-medium mb-2 text-white">
-                    Full Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    placeholder="Your Name"
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-400 focus:outline-none transition-colors"
-                  />
-                </div>
+              {/* Step 1: Contact Details */}
+              {currentStep === 1 && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="block text-sm font-medium mb-2 text-white">
+                        Full Name <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        type="text"
+                        name="fullName"
+                        value={formData.fullName}
+                        onChange={handleChange}
+                        placeholder="Your Name"
+                        required
+                        className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-400 focus:outline-none transition-colors"
+                      />
+                    </div>
 
-                <div>
-                  <Label className="block text-sm font-medium mb-2 text-white">
-                    Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="your@email.com"
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-400 focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
+                    <div>
+                      <Label className="block text-sm font-medium mb-2 text-white">
+                        Email <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="your@email.com"
+                        required
+                        className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-400 focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="block text-sm font-medium mb-2 text-white">
-                    WhatsApp Number <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="tel"
-                    name="whatsapp"
-                    value={formData.whatsapp}
-                    onChange={handleChange}
-                    placeholder="+91 XXXXX XXXXX"
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white focus:border-yellow-400 focus:outline-none transition-colors"
-                  />
+                  <div>
+                    <Label className="block text-sm font-medium mb-2 text-white">
+                      WhatsApp Number <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="tel"
+                      name="whatsapp"
+                      value={formData.whatsapp}
+                      onChange={handleChange}
+                      placeholder="+91 XXXXX XXXXX"
+                      required
+                      className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white focus:border-yellow-400 focus:outline-none transition-colors"
+                    />
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <Label className="block text-sm font-medium mb-2 text-white">
-                    Service Type <span className="text-red-500">*</span>
-                  </Label>
-                  <select
-                    name="serviceType"
-                    value={formData.serviceType}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white focus:border-yellow-400 focus:outline-none transition-colors appearance-none cursor-pointer"
+              {/* Step 2: Project Specifications */}
+              {currentStep === 2 && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div>
+                    <Label className="block text-sm font-medium mb-2 text-white">
+                      Service Type <span className="text-red-500">*</span>
+                    </Label>
+                    <select
+                      name="serviceType"
+                      value={formData.serviceType}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white focus:border-yellow-400 focus:outline-none transition-colors appearance-none cursor-pointer"
+                      style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                        backgroundRepeat: "no-repeat",
+                        backgroundPosition: "right 12px center",
+                        backgroundSize: "20px",
+                      }}
+                    >
+                      <option value="" disabled>
+                        Select Service
+                      </option>
+                      <option value="Wedding Film Editing">Wedding Film Editing</option>
+                      <option value="YouTube Video Editing">YouTube Video Editing</option>
+                      <option value="Social Media Reels">Social Media Reels</option>
+                      <option value="Corporate Video">Corporate Video</option>
+                      <option value="Music Video">Music Video</option>
+                      <option value="Thumbnail Design">Thumbnail Design</option>
+                      <option value="Photo Frames">Photo Frames</option>
+                      <option value="Logo & Animation">Logo & Animation</option>
+                      <option value="AI Web Development">AI Web Development</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label className="block text-sm font-medium mb-2 text-white">
+                      Project Description <span className="text-red-500">*</span>
+                    </Label>
+                    <Textarea
+                      name="projectDescription"
+                      value={formData.projectDescription}
+                      onChange={handleChange}
+                      placeholder="Describe your project requirements, style preferences, and any specific instructions..."
+                      rows={5}
+                      required
+                      className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-400 focus:outline-none transition-colors resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Files & Timeline */}
+              {currentStep === 3 && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <div>
+                    <Label className="block text-sm font-medium mb-2 text-white">Deadline Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-left flex items-center justify-between hover:border-yellow-400/50 focus:border-yellow-400 focus:outline-none transition-colors"
+                        >
+                          <span className={selectedDate ? "text-white" : "text-gray-500"}>
+                            {selectedDate ? format(selectedDate, "PPP") : "Select deadline date"}
+                          </span>
+                          <CalendarIcon className="w-5 h-5 text-gray-500" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-gray-900 border border-gray-700" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={handleDateSelect}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                          className="bg-gray-900 text-white"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div>
+                    <Label className="block text-sm font-medium mb-2 text-white">
+                      <span className="flex items-center gap-2">
+                        <Link2 className="w-4 h-4 text-yellow-400" />
+                        Raw File Link
+                        <span className="text-gray-500 font-normal">(Google Drive / WeTransfer)</span>
+                      </span>
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type="url"
+                        name="rawFileLink"
+                        value={formData.rawFileLink}
+                        onChange={handleChange}
+                        placeholder="Paste your file sharing link here..."
+                        className="w-full px-4 py-3 pl-11 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-400 focus:outline-none transition-colors"
+                      />
+                      <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Controls */}
+              <div className="flex gap-3 pt-4">
+                {currentStep > 1 && (
+                  <Button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="flex-1 py-4 font-bold border border-white hover:border-[#FACC15] hover:text-[#FACC15] text-white bg-transparent rounded-xl transition-all"
+                  >
+                    Back
+                  </Button>
+                )}
+                
+                {currentStep < 3 ? (
+                  <Button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="flex-1 py-4 font-bold rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99]"
+                    style={{ background: "#FACC15", color: "#000000" }}
+                  >
+                    Next Step
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-grow py-4 font-bold rounded-xl shadow-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
                     style={{
-                      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
-                      backgroundRepeat: "no-repeat",
-                      backgroundPosition: "right 12px center",
-                      backgroundSize: "20px",
+                      background: isSubmitting ? "#6B7280" : "#FACC15",
+                      color: "#000000",
                     }}
                   >
-                    <option value="" disabled>
-                      Select Service
-                    </option>
-                    <option value="Wedding Film Editing">Wedding Film Editing</option>
-                    <option value="YouTube Video Editing">YouTube Video Editing</option>
-                    <option value="Social Media Reels">Social Media Reels</option>
-                    <option value="Corporate Video">Corporate Video</option>
-                    <option value="Music Video">Music Video</option>
-                    <option value="Thumbnail Design">Thumbnail Design</option>
-                    <option value="Photo Frames">Photo Frames</option>
-                    <option value="Logo & Animation">Logo & Animation</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <Label className="block text-sm font-medium mb-2 text-white">Deadline Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-left flex items-center justify-between hover:border-yellow-400/50 focus:border-yellow-400 focus:outline-none transition-colors"
-                    >
-                      <span className={selectedDate ? "text-white" : "text-gray-500"}>
-                        {selectedDate ? format(selectedDate, "PPP") : "Select deadline date"}
-                      </span>
-                      <CalendarIcon className="w-5 h-5 text-gray-500" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-gray-900 border border-gray-700" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={handleDateSelect}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                      className="bg-gray-900 text-white"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div>
-                <Label className="block text-sm font-medium mb-2 text-white">
-                  <span className="flex items-center gap-2">
-                    <Link2 className="w-4 h-4 text-yellow-400" />
-                    Raw File Link
-                    <span className="text-gray-500 font-normal">(Google Drive / WeTransfer / Dropbox)</span>
-                  </span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    type="url"
-                    name="rawFileLink"
-                    value={formData.rawFileLink}
-                    onChange={handleChange}
-                    placeholder="Paste your file sharing link here..."
-                    className="w-full px-4 py-3 pl-11 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-400 focus:outline-none transition-colors"
-                  />
-                  <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                </div>
-                <p className="mt-2 text-xs text-gray-500">
-                  Share your raw footage via Google Drive, WeTransfer, Dropbox, or any file sharing service
-                </p>
-              </div>
-
-              <div>
-                <Label className="block text-sm font-medium mb-2 text-white">
-                  Project Description <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  name="projectDescription"
-                  value={formData.projectDescription}
-                  onChange={handleChange}
-                  placeholder="Describe your project requirements, style preferences, and any specific instructions..."
-                  rows={4}
-                  required
-                  className="w-full px-4 py-3 rounded-xl bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:border-yellow-400 focus:outline-none transition-colors resize-none"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-4 text-base md:text-lg font-bold rounded-xl shadow-lg flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-                style={{
-                  background: isSubmitting ? "#6B7280" : "#FACC15",
-                  color: "#000000",
-                }}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Upload className="w-5 h-5 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5" />
-                    Submit Order
-                  </>
+                    {isSubmitting ? (
+                      <>
+                        <Upload className="w-5 h-5 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5" />
+                        Submit Order
+                      </>
+                    )}
+                  </Button>
                 )}
-              </Button>
+              </div>
             </form>
 
             <div className="mt-8 pt-8 border-t border-gray-800">

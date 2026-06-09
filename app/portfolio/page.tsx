@@ -259,12 +259,13 @@ const photoSizes = [
     size: '6" × 4"',
     price: "₹150",
     popular: false,
-    image: "/frame-6x4-sample-1.jpg",
+    image: "/frame-4x6-sample-1.jpg",
     gallery: [
-      "/",
-      "/frame-6x4-sample-2.jpg",
-      "/frame-6x4-sample-3.jpg",
-      "/frame-6x4-sample-4.jpg",
+      "/frame-4x6-sample-1.jpg",
+      "/frame-4x6-sample-2.jpg",
+      "/frame-4x6-sample-3.jpg",
+      "/frame-4x6-sample-4.jpg",
+      "/frame-4x6-sample-5.jpg",
     ],
     description: "Small classic size for regular photos.",
   },
@@ -272,12 +273,12 @@ const photoSizes = [
     size: '8" × 6"',
     price: "₹200",
     popular: true,
-    image: "/frame-8x6-sample-1.jpg",
+    image: "/frame-6x8-sample-1.jpg",
     gallery: [
-      "/frame-8x6-sample-1.jpg",
-      "/frame-8x6-sample-2.jpg",
-      "/frame-8x6-sample-3.jpg",
-      "/frame-8x6-sample-4.jpg",
+      "/frame-6x8-sample-1.jpg",
+      "/frame-6x8-sample-2.jpg",
+      "/frame-6x8-sample-3.jpg",
+      "/frame-6x8-sample-4.jpg",
     ],
     description: "Best for gifts & table frames.",
   },
@@ -285,12 +286,14 @@ const photoSizes = [
     size: '10" × 8"',
     price: "₹300",
     popular: true,
-    image: "/frame-10x8-sample-1.jpg",
+    image: "/frame-8x10-sample-1.jpg",
     gallery: [
-      "/frame-10x8-sample-1.jpg",
-      "/frame-10x8-sample-2.jpg",
-      "/frame-10x8-sample-3.jpg",
-      "/frame-10x8-sample-4.jpg",
+      "/frame-8x10-sample-1.jpg",
+      "/frame-8x10-sample-2.jpg",
+      "/frame-8x10-sample-3.jpg",
+      "/frame-8x10-sample-4.jpg",
+      "/frame-8x10-sample-5.jpg",
+      "/frame-8x10-sample-6.jpg",
     ],
     description: "Big and premium for home display.",
   },
@@ -298,12 +301,13 @@ const photoSizes = [
     size: '12" × 8" (1")',
     price: "₹400",
     popular: true, // ✅ YES set panniten
-    image: "/frame-12x8-1inch-sample-1.jpg",
+    image: "/frame-5x7-sample-1.jpg",
     gallery: [
-      "/frame-12x8-1inch-sample-1.jpg",
-      "/frame-12x8-1inch-sample-2.jpg",
-      "/frame-12x8-1inch-sample-3.jpg",
-      "/frame-12x8-1inch-sample-4.jpg",
+      "/frame-5x7-sample-1.jpg",
+      "/frame-5x7-sample-2.jpg",
+      "/frame-5x7-sample-3.jpg",
+      "/frame-5x7-sample-4.jpg",
+      "/frame-5x7-sample-5.jpg",
     ],
     description: "Offline most moving wall frame size.",
   },
@@ -311,12 +315,12 @@ const photoSizes = [
     size: '12" × 8" (1.25")',
     price: "₹450",
     popular: true,
-    image: "/frame-12x8-1_25inch-sample-1.jpg",
+    image: "/frame-5x5-sample-1.jpg",
     gallery: [
-      "/frame-12x8-1_25inch-sample-1.jpg",
-      "/frame-12x8-1_25inch-sample-2.jpg",
-      "/frame-12x8-1_25inch-sample-3.jpg",
-      "/frame-12x8-1_25inch-sample-4.jpg",
+      "/frame-5x5-sample-1.jpg",
+      "/frame-5x5-sample-2.jpg",
+      "/frame-5x5-sample-3.jpg",
+      "/frame-5x5-sample-4.jpg",
     ],
     description: "Extra thick premium frame for bold look.",
   },
@@ -799,7 +803,7 @@ export default function PortfolioPage() {
                     <Button
                       size="lg"
                       variant="outline"
-                      className="btn-lift text-lg px-10 py-6 border-border hover:bg-white/10 bg-transparent text-white"
+                      className="btn-lift text-lg px-10 py-6 border-white hover:border-[#FACC15] hover:bg-[#FACC15] hover:text-[#050505] text-white bg-transparent transition-all duration-300"
                     >
                       View Services
                     </Button>
@@ -995,7 +999,7 @@ export default function PortfolioPage() {
                         </Link>
                         <Button
                           variant="outline"
-                          className="flex-1 border-border hover:border-[#FACC15] text-white bg-transparent"
+                          className="flex-1 border-white hover:border-[#FACC15] hover:text-[#FACC15] text-white bg-transparent"
                           onClick={() => setSelectedCase(null)}
                         >
                           Close

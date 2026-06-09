@@ -7,12 +7,15 @@ import { FloatingButtons } from "@/components/floating-buttons"
 import { ClientProviders } from "@/components/client-providers"
 import { Navigation } from "@/components/navigation"
 import { ConfigWarning } from "@/components/config-warning"
+import { CursorTrail } from "@/components/cursor-trail"
+import { PageLoader } from "@/components/page-loader"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://m2studio.in"),
   title: {
     default: "M2 Studio - Professional Video Editing & Creative Studio",
     template: "%s | M2 Studio",
@@ -137,6 +140,8 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <ClientProviders>
+          <PageLoader />
+          <CursorTrail />
           <Navigation />
           {/* Show a visible warning when Firebase client config is missing */}
           <ConfigWarning />

@@ -25,13 +25,11 @@ export default function ForgotPasswordPage() {
     const email = formData.get("email") as string
 
     try {
-      // TODO: Implement Firebase password reset
-      // const auth = getAuth()
-      // await sendPasswordResetEmail(auth, email)
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
+      const { getAuthClient } = await import("@/lib/firebase")
+      const authClient = await getAuthClient()
+      if (!authClient) throw new Error("Authentication service is unavailable. Please try again later.")
+      const { sendPasswordResetEmail } = await import("firebase/auth")
+      await sendPasswordResetEmail(authClient, email)
       setIsSuccess(true)
     } catch (err: any) {
       setError(err.message || "Failed to send reset email. Please try again.")

@@ -32,10 +32,10 @@ export default function AdminDashboard() {
       }
 
       const firestore = await import("firebase/firestore")
-      const { collection, query, orderBy, onSnapshot } = firestore
+      const { collection, query, onSnapshot } = firestore
 
       const ordersRef = collection(dbInstance, "orders")
-      const q = query(ordersRef, orderBy("createdAt", "desc"))
+      const q = query(ordersRef)
 
       unsubscribe = onSnapshot(
         q,
@@ -44,6 +44,14 @@ export default function AdminDashboard() {
           snapshot.forEach((doc: any) => {
             ordersData.push({ id: doc.id, ...doc.data() } as Order)
           })
+          
+          // Sort in-memory descending by date to support both createdAtIso and createdAt schemas
+          ordersData.sort((a, b) => {
+            const dateA = new Date(a.createdAtIso || a.createdAt || 0).getTime()
+            const dateB = new Date(b.createdAtIso || b.createdAt || 0).getTime()
+            return dateB - dateA
+          })
+
           setOrders(ordersData)
           setLoading(false)
         },
@@ -92,7 +100,11 @@ export default function AdminDashboard() {
     },
     {
       label: "Revenue",
-      value: `$${orders.reduce((sum, o) => sum + (Number.parseFloat(o.price?.replace("$", "") || "0") || 0), 0).toFixed(0)}`,
+      value: `$${orders.reduce((sum, o) => {
+        const p = o.price || o.budget || "0"
+        const cleanPrice = Number.parseFloat(p.replace(/[^0-9.]/g, "")) || 0
+        return sum + cleanPrice
+      }, 0).toFixed(0)}`,
       icon: DollarSign,
       color: "text-[#FACC15]",
     },
@@ -204,14 +216,14 @@ export default function AdminDashboard() {
                         <td className="p-4 text-sm font-medium text-[#FFFFFF]">{order.id.substring(0, 8)}</td>
                         <td className="p-4">
                           <div>
-                            <div className="text-sm font-medium text-[#FFFFFF]">{order.userName}</div>
-                            <div className="text-xs text-[#9CA3AF]">{order.userEmail}</div>
+                            <div className="text-sm font-medium text-[#FFFFFF]">{order.fullName || order.userName || "Guest"}</div>
+                            <div className="text-xs text-[#9CA3AF]">{order.email || order.userEmail || "No Email"}</div>
                           </div>
                         </td>
                         <td className="p-4 text-sm text-[#FFFFFF]">{order.serviceType}</td>
                         <td className="p-4">{getStatusBadge(order.status)}</td>
-                        <td className="p-4 text-sm text-[#9CA3AF]">{new Date(order.deadline).toLocaleDateString()}</td>
-                        <td className="p-4 text-sm font-semibold text-[#FACC15]">{order.price || order.budget}</td>
+                        <td className="p-4 text-sm text-[#9CA3AF]">{order.deadline ? new Date(order.deadline).toLocaleDateString() : "Not specified"}</td>
+                        <td className="p-4 text-sm font-semibold text-[#FACC15]">{order.price || order.budget || "Not specified"}</td>
                         <td className="p-4">
                           <Link href={`/admin/orders/${order.id}`}>
                             <Button size="sm" variant="ghost" className="hover:bg-[#FACC15]/10 text-[#FACC15]">

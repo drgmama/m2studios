@@ -35,6 +35,32 @@ export async function GET(request: Request) {
 
     await docRef.update({ status: newStatus, updatedAtIso: new Date().toISOString() })
 
+    // Create notification in Firestore using Admin SDK
+    try {
+      const clientEmail = orderData.email || orderData.userEmail
+      if (clientEmail) {
+        const usersSnapshot = await adminDb
+          .collection("users")
+          .where("email", "==", clientEmail)
+          .limit(1)
+          .get()
+
+        if (!usersSnapshot.empty) {
+          const clientUid = usersSnapshot.docs[0].id
+          await adminDb.collection("notifications").add({
+            userId: clientUid,
+            orderId,
+            title: "Order Status Update",
+            message: `Your order status has been updated to ${newStatus}.`,
+            read: false,
+            createdAt: new Date().toISOString()
+          })
+        }
+      }
+    } catch (notifErr) {
+      console.error("Failed to create webhook status update notification:", notifErr)
+    }
+
     // Send status update email to client (best-effort)
     try {
       await sendClientEmail({

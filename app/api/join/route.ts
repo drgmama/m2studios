@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { adminDb } from "@/lib/firebaseAdmin"
 
 // Email validation regex
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -8,7 +9,7 @@ export async function POST(request: Request) {
     const formData = await request.json()
 
     // Validate required fields
-    const requiredFields = ["fullName", "email", "phone", "device", "software", "position", "whyJoin", "durability"]
+    const requiredFields = ["fullName", "email", "phone", "device", "software", "position", "durability"]
     for (const field of requiredFields) {
       if (!formData[field]) {
         return NextResponse.json({ error: `${field} is required` }, { status: 400 })
@@ -20,7 +21,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid email format" }, { status: 400 })
     }
 
+    let applicationId = null
+    const applicationData = {
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      device: formData.device,
+      software: formData.software,
+      position: formData.position,
+      portfolio: formData.portfolio || "N/A",
+      whyJoin: formData.whyJoin || "Not provided",
+      durability: formData.durability,
+      status: "pending",
+      createdAtIso: new Date().toISOString(),
+      updatedAtIso: new Date().toISOString(),
+    }
+
+    try {
+      if (adminDb) {
+        const docRef = await adminDb.collection("applications").add(applicationData)
+        applicationId = docRef.id
+      } else {
+        console.warn("[v0] Firestore Admin SDK not initialized. Mocking application save locally.")
+        console.info("[v0] Mocked Application Data:", applicationData)
+        applicationId = "mock-app-" + Math.random().toString(36).substring(2, 9)
+      }
+    } catch (firebaseError) {
+      console.error("Firestore applications save error:", firebaseError)
+    }
+
     const googleSheetsWebhook = process.env.GOOGLE_SHEETS_WEBHOOK_URL
+    const discordWebhook = process.env.DISCORD_APPLICATION_WEBHOOK_URL
+
+    if (!googleSheetsWebhook && !discordWebhook) {
+      console.warn("[v0] Webhooks not configured for Join Us. Logged submission locally:")
+      console.info("[v0] Mocked Join Application (Unconfigured Webhooks):", applicationData)
+    }
+
     if (googleSheetsWebhook) {
       try {
         await fetch(googleSheetsWebhook, {
@@ -36,7 +73,7 @@ export async function POST(request: Request) {
             software: formData.software,
             position: formData.position,
             portfolio: formData.portfolio || "N/A",
-            whyJoin: formData.whyJoin,
+            whyJoin: formData.whyJoin || "Not provided",
             durability: formData.durability,
           }),
         })
@@ -45,7 +82,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const discordWebhook = process.env.DISCORD_APPLICATION_WEBHOOK_URL
     if (discordWebhook) {
       try {
         await fetch(discordWebhook, {
@@ -61,6 +97,11 @@ export async function POST(request: Request) {
                 title: "🎬 New M2 Studio Application",
                 color: 0xfacc15, // Yellow color
                 fields: [
+                  {
+                    name: "🆔 Application ID",
+                    value: applicationId || "Not saved",
+                    inline: true,
+                  },
                   {
                     name: "👤 Name",
                     value: formData.fullName,
@@ -98,7 +139,7 @@ export async function POST(request: Request) {
                   },
                   {
                     name: "💭 Why Join",
-                    value: formData.whyJoin.substring(0, 1024),
+                    value: (formData.whyJoin || "Not provided").substring(0, 1024),
                     inline: false,
                   },
                   {
@@ -120,7 +161,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, message: "Application submitted successfully!" })
+    return NextResponse.json({ success: true, message: "Application submitted successfully!", applicationId })
   } catch (error) {
     console.error("API error:", error)
     return NextResponse.json({ error: "Failed to submit application" }, { status: 500 })

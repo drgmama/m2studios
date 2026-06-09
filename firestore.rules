@@ -1,10 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // For local emulator/testing only: allow full read/write.
-    // Replace with stricter rules before deploying to production.
-    match /{document=**} {
+    
+    // Helper function to check if the user is an admin
+    function isAdmin() {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Rules for users collection
+    match /users/{userId} {
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Rules for orders collection
+    match /orders/{orderId} {
+      allow create: if request.auth != null;
+      allow read, write: if request.auth != null && (
+        request.auth.token.email == resource.data.email || 
+        request.auth.token.email == request.resource.data.email ||
+        isAdmin()
+      );
+    }
+
+    // Rules for messages collection (chat logs)
+    match /messages/{messageId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Rules for reviews
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
+    }
+
+    // Rules for support sessions
+    match /supportChats/{sessionId} {
       allow read, write: if true;
+    }
+
+    // Rules for notifications
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null && (
+        request.auth.uid == resource.data.userId || 
+        request.auth.uid == request.resource.data.userId ||
+        isAdmin()
+      );
     }
   }
 }

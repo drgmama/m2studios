@@ -54,12 +54,18 @@ export async function GET(request: NextRequest) {
     const querySnapshot = await adminDb
       .collection("messages")
       .where("orderId", "==", orderId)
-      .orderBy("createdAt", "asc")
       .get()
 
     const messages: Array<Record<string, any>> = []
     querySnapshot.forEach((doc) => {
       messages.push({ id: doc.id, ...doc.data() })
+    })
+
+    // Sort in-memory to avoid requiring composite Firestore indexes
+    messages.sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime()
+      const timeB = new Date(b.createdAt || 0).getTime()
+      return timeA - timeB
     })
 
     return NextResponse.json({ success: true, messages })

@@ -27,6 +27,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { db, getFirestoreClient } from "@/lib/firebase"
 import { Badge } from "@/components/ui/badge" // Import Badge component
+import { OrderCountdown } from "@/components/order-countdown"
 
 interface Order {
   id: string
@@ -34,9 +35,62 @@ interface Order {
   status: string
   createdAt: string
   deliveredAt: string | null
+  deadline?: string
   budget: string
   hasFiles: boolean
   unreadMessages: number
+}
+
+function OrderProgressStepper({ status }: { status: string }) {
+  const steps = ["pending", "working", "delivered"]
+  const stepLabels = ["Order Placed", "In Progress", "Delivered"]
+  const currentIndex = steps.indexOf(status)
+
+  return (
+    <div className="mt-6 mb-4 flex items-center w-full max-w-md gap-2">
+      {steps.map((step, index) => {
+        const isCompleted = index < currentIndex
+        const isActive = index === currentIndex
+        const label = stepLabels[index]
+
+        return (
+          <div key={step} className="flex-1 flex items-center relative">
+            {/* Step Indicator Node */}
+            <div className="flex flex-col items-center z-10 flex-1">
+              <div
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center border text-xs sm:text-sm transition-all duration-500 ${
+                  isCompleted
+                    ? "bg-[#FACC15] border-[#FACC15] text-[#000000] shadow-[0_0_10px_rgba(250,204,21,0.4)]"
+                    : isActive
+                      ? "bg-[#0E0E0E] border-[#FACC15] text-[#FACC15] shadow-[0_0_15px_rgba(250,204,21,0.5)] animate-pulse font-bold"
+                      : "bg-[#0E0E0E] border-gray-800 text-gray-500"
+                }`}
+              >
+                {isCompleted ? "✓" : index + 1}
+              </div>
+              <span
+                className={`text-[9px] sm:text-[10px] mt-1 font-semibold text-center transition-all duration-300 ${
+                  isActive ? "text-[#FACC15] font-bold" : isCompleted ? "text-gray-300" : "text-gray-500"
+                }`}
+              >
+                {label}
+              </span>
+            </div>
+
+            {/* Connecting Bar */}
+            {index < steps.length - 1 && (
+              <div className="absolute top-3.5 sm:top-4 left-[55%] right-[-55%] h-0.5 bg-gray-800 z-0">
+                <div
+                  className="h-full bg-[#FACC15] transition-all duration-1000 ease-out"
+                  style={{ width: isCompleted ? "100%" : isActive ? "50%" : "0%" }}
+                />
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function ClientDashboard() {
@@ -79,6 +133,7 @@ export default function ClientDashboard() {
             status: data.status || "pending",
             createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
             deliveredAt: data.deliveredAt?.toDate?.()?.toISOString() || null,
+            deadline: data.deadline || null,
             budget: data.budget || "$0",
             hasFiles: data.hasFiles || false,
             unreadMessages: data.unreadMessages || 0,
@@ -501,6 +556,9 @@ export default function ClientDashboard() {
                             {order.service}
                           </h3>
                           {getStatusBadge(order.status)}
+                          {order.status === "working" && order.deadline && (
+                            <OrderCountdown deadline={order.deadline} />
+                          )}
                         </div>
                         <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: "#9CA3AF" }}>
                           <span className="flex items-center gap-1.5">
@@ -536,6 +594,7 @@ export default function ClientDashboard() {
                             {order.budget}
                           </span>
                         </div>
+                        <OrderProgressStepper status={order.status} />
                       </div>
 
                       <div className="flex flex-wrap gap-3">
